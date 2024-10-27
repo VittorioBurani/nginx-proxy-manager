@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import re
-from typing import List
+import subprocess
 from pathlib import Path
-from subprocess import run
 from ast import literal_eval
+from typing import List, Generator
 from abc import ABC, abstractmethod
 
 
@@ -11,10 +11,27 @@ DOCKER_COMPOSE = Path(__file__).parent / 'docker-compose.yml'
 HOMEPAGE       = Path(__file__).parent / 'homepage' / 'index.html'
 
 
+def execute(cmd:str) -> Generator[str, None, None]:
+    '''Execute an external command as a subprocess and yields the output'''
+    popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    for stdout_line in iter(popen.stdout.readline, ""):
+        yield stdout_line
+    popen.stdout.close()
+    return_code = popen.wait()
+    if return_code:
+        raise subprocess.CalledProcessError(return_code, cmd)
+
+
+def run_execute(cmd:str) -> None:
+    '''Run an external command and print to temrinal'''
+    for out_line in execute(cmd):
+        print(out_line, end='')
+
+
 def restart_network() -> None:
     '''Restart the Docker Network'''
     print('Restarting the Docker Network...')
-    run(['docker', 'compose', 'down', '&&', 'docker', 'compose', 'up', '-d'])
+    run_execute('docker compose down && docker compose up -d')
 
 
 def uncomment_network() -> None:
